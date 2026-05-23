@@ -88,7 +88,7 @@
     if (local) {
       try {
         const parsed = JSON.parse(local);
-        if (!builtIn || parsed.version === builtIn.version) {
+        if (parsed && Array.isArray(parsed.cards)) {
           return parsed;
         }
         localStorage.removeItem(storageKey(bankId));
@@ -643,7 +643,7 @@
       try {
         const bank = normalizeBank(JSON.parse(el.bankEditor.value));
         if (!bank.cards.length) throw new Error("cards 里没有题目");
-        localStorage.setItem(storageKey(state.bankId), JSON.stringify(bank));
+        localStorage.setItem(storageKey(state.bankId), JSON.stringify({ ...bank, localOverride: true }));
         loadBank(state.bankId);
         setEditorStatus(`已应用 ${bank.cards.length} 道题到本机浏览器。`, "ok");
         el.editorPanel.hidden = true;
