@@ -941,12 +941,11 @@ textarea.prompt-output {
 
 @media (max-width: 940px) and (orientation: landscape), (max-width: 760px) and (orientation: portrait) {
   :root {
-    --mobile-topbar: clamp(38px, 13vh, 50px);
-    --mobile-footer: clamp(24px, 8vh, 32px);
-    --mobile-left: clamp(126px, 21vw, 168px);
-    --mobile-right: clamp(150px, 25vw, 210px);
-    --mobile-title: clamp(24px, 8.2vh, 46px);
-    --mobile-prompt: clamp(12px, 3.6vh, 18px);
+    --mobile-topbar: clamp(34px, 10vh, 44px);
+    --mobile-left: clamp(108px, 18vw, 148px);
+    --mobile-right: clamp(124px, 21vw, 178px);
+    --mobile-title: clamp(22px, 7vh, 38px);
+    --mobile-prompt: clamp(11px, 3.2vh, 16px);
   }
 
   html,
@@ -958,13 +957,13 @@ textarea.prompt-output {
   .app-shell {
     height: 100vh;
     min-height: 0;
-    grid-template-rows: var(--mobile-topbar) 1fr var(--mobile-footer);
+    grid-template-rows: var(--mobile-topbar) 1fr;
     overflow: hidden;
   }
 
   .topbar {
     min-height: 0;
-    grid-template-columns: minmax(0, 1fr) auto minmax(0, 0.72fr);
+    grid-template-columns: minmax(0, 1fr) auto;
     gap: 6px;
     padding: 0 10px;
     text-align: left;
@@ -983,8 +982,7 @@ textarea.prompt-output {
   }
 
   .topbar__date {
-    justify-content: flex-end;
-    text-overflow: clip;
+    display: none;
   }
 
   .brand strong {
@@ -1012,7 +1010,7 @@ textarea.prompt-output {
 
   .right-panel {
     display: grid;
-    grid-template-rows: clamp(64px, 23vh, 86px) 1fr clamp(50px, 17vh, 64px);
+    grid-template-rows: clamp(54px, 19vh, 76px) 1fr clamp(44px, 15vh, 58px);
     min-width: 0;
   }
 
@@ -1028,11 +1026,11 @@ textarea.prompt-output {
 
   .metric-grid strong,
   .session-count strong {
-    font-size: clamp(26px, 10vh, 36px);
+    font-size: clamp(22px, 8vh, 32px);
   }
 
   .tempo-readout span {
-    font-size: clamp(24px, 9vh, 32px);
+    font-size: clamp(22px, 7.5vh, 30px);
   }
 
   .mode-button {
@@ -1051,7 +1049,7 @@ textarea.prompt-output {
   }
 
   .study-stage {
-    grid-template-rows: clamp(28px, 10vh, 38px) minmax(0, 1fr) clamp(44px, 15vh, 54px);
+    grid-template-rows: clamp(24px, 8vh, 34px) minmax(0, 1fr) clamp(38px, 12vh, 48px);
     min-width: 0;
   }
 
@@ -1064,8 +1062,8 @@ textarea.prompt-output {
 
   .formula-card {
     width: 94%;
-    gap: clamp(6px, 2vh, 10px);
-    padding: 6px 6px 10px;
+    gap: clamp(4px, 1.5vh, 8px);
+    padding: 4px 6px 8px;
   }
 
   .formula-card h1 {
@@ -1103,11 +1101,11 @@ textarea.prompt-output {
   }
 
   .session-box {
-    padding: 10px 14px 8px;
+    padding: 8px 12px 6px;
   }
 
   .queue-list {
-    padding: 10px 14px;
+    padding: 8px 12px;
   }
 
   .queue-item {
@@ -1137,29 +1135,6 @@ textarea.prompt-output {
   }
 
   .bottombar {
-    grid-template-columns: minmax(0, 1fr) auto;
-    padding: 0 10px;
-    gap: 6px;
-    font-size: 10px;
-    letter-spacing: 0.08em;
-    overflow: hidden;
-  }
-
-  .bottombar p {
-    min-width: 0;
-    overflow: hidden;
-    white-space: nowrap;
-    text-overflow: ellipsis;
-  }
-
-  .shortcuts {
-    justify-content: flex-end;
-    flex-wrap: nowrap;
-    overflow: hidden;
-  }
-
-  .shortcuts kbd,
-  .shortcuts span:nth-of-type(n + 4) {
     display: none;
   }
 
@@ -1189,10 +1164,10 @@ textarea.prompt-output {
 
 @media (max-width: 760px) and (orientation: portrait) {
   :root {
-    --mobile-left: clamp(112px, 18vh, 148px);
-    --mobile-right: clamp(132px, 22vh, 178px);
-    --mobile-title: clamp(22px, 5.2vh, 40px);
-    --mobile-prompt: clamp(11px, 2.6vh, 16px);
+    --mobile-left: clamp(104px, 17vh, 136px);
+    --mobile-right: clamp(120px, 20vh, 164px);
+    --mobile-title: clamp(20px, 4.8vh, 34px);
+    --mobile-prompt: clamp(10px, 2.35vh, 14px);
   }
 
   html,
@@ -1215,19 +1190,4 @@ textarea.prompt-output {
     transform-origin: top left;
   }
 
-  .topbar__date {
-    display: none;
-  }
-
-  .topbar {
-    grid-template-columns: minmax(0, 1fr) auto;
-  }
-
-  .bottombar {
-    grid-template-columns: 1fr;
-  }
-
-  .shortcuts {
-    display: none;
-  }
 }
