@@ -58,6 +58,7 @@
     editorPanel: document.querySelector("#editorPanel"),
     closeEditor: document.querySelector("#closeEditor"),
     bankEditor: document.querySelector("#bankEditor"),
+    bankNameInput: document.querySelector("#bankNameInput"),
     promptSubject: document.querySelector("#promptSubject"),
     promptCount: document.querySelector("#promptCount"),
     makePromptBtn: document.querySelector("#makePromptBtn"),
@@ -167,6 +168,9 @@
     const safeBank = bank || {};
     return {
       ...safeBank,
+      id: safeBank.id || slugify(safeBank.name || safeBank.subject || "bank"),
+      name: safeBank.name || `${safeBank.subject || "自定义"}题库`,
+      subject: safeBank.subject || safeBank.name || "自定义",
       cards: (safeBank.cards || []).map((card, index) => ({
         id: card.id || `${safeBank.id || "bank"}-${pad(index + 1)}`,
         chapter: card.chapter || safeBank.subject || "未分类",
@@ -193,6 +197,13 @@
 
   function currentBankName() {
     return el.bankSelect.options[el.bankSelect.selectedIndex]?.textContent || "自定义题库";
+  }
+
+  function syncBankName(bank) {
+    const name = bank.name || `${bank.subject || "自定义"}题库`;
+    const selectedOption = el.bankSelect.options[el.bankSelect.selectedIndex];
+    if (selectedOption) selectedOption.textContent = name;
+    el.bankNameInput.value = name;
   }
 
   function setEditorStatus(message, tone = "") {
@@ -318,6 +329,7 @@
   function importBankText(rawText) {
     const jsonText = extractJsonText(rawText);
     const bank = coerceImportedBank(JSON.parse(jsonText));
+    syncBankName(bank);
     el.bankEditor.value = JSON.stringify(bank, null, 2);
     setEditorStatus(`已解析 ${bank.cards.length} 道题，确认后点“应用到本机”。`, "ok");
   }
@@ -348,6 +360,7 @@
     el.goalCount.textContent = bank.dailyGoal || 20;
     el.bankSize.textContent = pad(state.cards.length);
     el.sessionTotal.textContent = pad(state.cards.length);
+    syncBankName(bank);
     el.bankEditor.value = JSON.stringify(bank, null, 2);
     render();
   }
@@ -641,7 +654,9 @@
     });
     el.applyBankBtn.addEventListener("click", () => {
       try {
-        const bank = normalizeBank(JSON.parse(el.bankEditor.value));
+        const parsed = JSON.parse(el.bankEditor.value);
+        const editedName = el.bankNameInput.value.trim();
+        const bank = normalizeBank({ ...parsed, name: editedName || parsed.name });
         if (!bank.cards.length) throw new Error("cards 里没有题目");
         localStorage.setItem(storageKey(state.bankId), JSON.stringify({ ...bank, localOverride: true }));
         loadBank(state.bankId);

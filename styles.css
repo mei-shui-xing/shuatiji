@@ -567,7 +567,7 @@ kbd {
 
 .editor-tools {
   display: grid;
-  grid-template-columns: minmax(180px, 1fr) 104px auto;
+  grid-template-columns: minmax(180px, 1fr) minmax(180px, 1fr) 104px auto;
   gap: 12px;
   padding: 14px 18px;
   border-bottom: 1px solid var(--line);
