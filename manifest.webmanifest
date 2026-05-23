@@ -1,0 +1,10 @@
+{
+  "name": "刷题机",
+  "short_name": "刷题机",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "landscape",
+  "background_color": "#f5f2e9",
+  "theme_color": "#b91422"
+}

@@ -79,12 +79,126 @@
     return `shuatiji:${bankId}:bank`;
   }
 
+  function localBanksKey() {
+    return "shuatiji:localBanks";
+  }
+
+  function localBankStorageKey(bankId) {
+    return `shuatiji:local-bank:${bankId}`;
+  }
+
   function statsKey(bankId) {
     return `shuatiji:${bankId}:stats`;
   }
 
+  function isLocalBankId(bankId) {
+    return String(bankId || "").startsWith("local:");
+  }
+
+  function getLocalBankList() {
+    try {
+      const parsed = JSON.parse(localStorage.getItem(localBanksKey()) || "[]");
+      return Array.isArray(parsed) ? parsed.filter((item) => item && item.id && item.name) : [];
+    } catch {
+      localStorage.removeItem(localBanksKey());
+      return [];
+    }
+  }
+
+  function saveLocalBankList(list) {
+    localStorage.setItem(localBanksKey(), JSON.stringify(list));
+  }
+
+  function getLocalBank(bankId) {
+    if (!isLocalBankId(bankId)) return null;
+    const raw = localStorage.getItem(localBankStorageKey(bankId));
+    if (!raw) return null;
+    try {
+      const parsed = JSON.parse(raw);
+      return parsed && Array.isArray(parsed.cards) ? parsed : null;
+    } catch {
+      return null;
+    }
+  }
+
+  function makeLocalBankId(bank, existingId = "") {
+    if (isLocalBankId(existingId)) return existingId;
+    const seed = bank.id && !builtInBanks[bank.id] ? bank.id : bank.name || bank.subject || "bank";
+    const base = `local:${slugify(seed)}`;
+    const used = new Set(getLocalBankList().map((item) => item.id));
+    let id = base;
+    let suffix = 2;
+    while (used.has(id)) {
+      id = `${base}-${suffix}`;
+      suffix += 1;
+    }
+    return id;
+  }
+
+  function saveLocalBank(bank, existingId = "") {
+    const id = makeLocalBankId(bank, existingId);
+    const normalized = normalizeBank({
+      ...bank,
+      id,
+      localBank: true,
+      updatedAt: new Date().toISOString(),
+    });
+    localStorage.setItem(localBankStorageKey(id), JSON.stringify(normalized));
+
+    const list = getLocalBankList().filter((item) => item.id !== id);
+    list.push({
+      id,
+      name: normalized.name,
+      subject: normalized.subject,
+      count: normalized.cards.length,
+      updatedAt: normalized.updatedAt,
+    });
+    list.sort((a, b) => String(a.name).localeCompare(String(b.name), "zh-Hans-CN"));
+    saveLocalBankList(list);
+    return normalized;
+  }
+
+  function deleteLocalBank(bankId) {
+    if (!isLocalBankId(bankId)) return;
+    localStorage.removeItem(localBankStorageKey(bankId));
+    saveLocalBankList(getLocalBankList().filter((item) => item.id !== bankId));
+  }
+
+  function migrateLegacyLocalBanks() {
+    const entries = catalog.length
+      ? catalog
+      : Object.values(builtInBanks).map((bank) => ({ id: bank.id }));
+    let migratedId = "";
+    entries.forEach((entry) => {
+      const raw = localStorage.getItem(storageKey(entry.id));
+      if (!raw) return;
+      try {
+        const parsed = JSON.parse(raw);
+        if (parsed && Array.isArray(parsed.cards)) {
+          const saved = saveLocalBank(parsed);
+          if (!migratedId) migratedId = saved.id;
+        }
+      } catch {
+        // Ignore bad legacy data and clear it below.
+      }
+      localStorage.removeItem(storageKey(entry.id));
+    });
+    return migratedId;
+  }
+
   function getBank(bankId) {
     const builtIn = builtInBanks[bankId];
+    if (builtIn) return structuredClone(builtIn);
+
+    const localBank = getLocalBank(bankId);
+    if (localBank) return localBank;
+
+    const firstBuiltInId = catalog[0]?.id || Object.keys(builtInBanks)[0];
+    if (firstBuiltInId && builtInBanks[firstBuiltInId]) {
+      state.bankId = firstBuiltInId;
+      return structuredClone(builtInBanks[firstBuiltInId]);
+    }
+
     const local = localStorage.getItem(storageKey(bankId));
     if (local) {
       try {
@@ -97,7 +211,7 @@
         localStorage.removeItem(storageKey(bankId));
       }
     }
-    return structuredClone(builtIn);
+    return { id: "empty", name: "空题库", subject: "自定义", dailyGoal: 20, cards: [] };
   }
 
   function saveStats() {
@@ -352,6 +466,7 @@
     clearTimeout(state.timer);
     state.bankId = bankId;
     const bank = normalizeBank(getBank(bankId));
+    el.bankSelect.value = state.bankId;
     state.cards = bank.cards;
     state.order = state.shuffle ? shuffleArray(state.cards.map((_, index) => index)) : state.cards.map((_, index) => index);
     state.index = 0;
@@ -361,6 +476,8 @@
     el.bankSize.textContent = pad(state.cards.length);
     el.sessionTotal.textContent = pad(state.cards.length);
     syncBankName(bank);
+    el.applyBankBtn.textContent = isLocalBankId(state.bankId) ? "保存修改" : "保存为新题库";
+    el.resetBankBtn.textContent = isLocalBankId(state.bankId) ? "删除本地题库" : "恢复内置题库";
     el.bankEditor.value = JSON.stringify(bank, null, 2);
     render();
   }
@@ -573,15 +690,28 @@
   }
 
   function initBankSelect() {
+    const migratedId = migrateLegacyLocalBanks();
+    renderBankSelect(migratedId || state.bankId);
+  }
+
+  function renderBankSelect(selectedId = state.bankId) {
     const entries = catalog.length
       ? catalog
       : Object.values(builtInBanks).map((bank) => ({ id: bank.id, name: bank.name }));
-    entries.forEach((bank) => {
+    const localEntries = getLocalBankList().map((bank) => ({ ...bank, local: true }));
+    const options = [...entries, ...localEntries].map((bank) => {
       const option = document.createElement("option");
       option.value = bank.id;
-      option.textContent = bank.name;
-      el.bankSelect.append(option);
+      option.textContent = bank.local ? `${bank.name}` : bank.name;
+      return option;
     });
+    el.bankSelect.replaceChildren(...options);
+    if (entries.some((entry) => entry.id === selectedId) || localEntries.some((entry) => entry.id === selectedId)) {
+      state.bankId = selectedId;
+    } else {
+      state.bankId = localEntries[0]?.id || entries[0]?.id;
+    }
+    el.bankSelect.value = state.bankId;
   }
 
   function bindEvents() {
@@ -656,11 +786,13 @@
       try {
         const parsed = JSON.parse(el.bankEditor.value);
         const editedName = el.bankNameInput.value.trim();
-        const bank = normalizeBank({ ...parsed, name: editedName || parsed.name });
-        if (!bank.cards.length) throw new Error("cards 里没有题目");
-        localStorage.setItem(storageKey(state.bankId), JSON.stringify({ ...bank, localOverride: true }));
-        loadBank(state.bankId);
-        setEditorStatus(`已应用 ${bank.cards.length} 道题到本机浏览器。`, "ok");
+        const existingId = isLocalBankId(state.bankId) ? state.bankId : "";
+        const draft = normalizeBank({ ...parsed, name: editedName || parsed.name });
+        if (!draft.cards.length) throw new Error("cards 里没有题目");
+        const bank = saveLocalBank(draft, existingId);
+        renderBankSelect(bank.id);
+        loadBank(bank.id);
+        setEditorStatus(`已保存 ${bank.cards.length} 道题到“${bank.name}”。`, "ok");
         el.editorPanel.hidden = true;
       } catch (error) {
         alert(`JSON 格式有问题：${error.message}`);
@@ -668,10 +800,20 @@
       }
     });
     el.resetBankBtn.addEventListener("click", () => {
-      localStorage.removeItem(storageKey(state.bankId));
+      if (isLocalBankId(state.bankId)) {
+        if (!confirm(`删除本地题库“${currentBankName()}”？内置题库不会删除。`)) return;
+        deleteLocalBank(state.bankId);
+        renderBankSelect(catalog[0]?.id || Object.keys(builtInBanks)[0]);
+        loadBank(state.bankId);
+        return;
+      }
       loadBank(state.bankId);
     });
     window.addEventListener("keydown", (event) => {
+      if (event.key === "Escape" && !el.editorPanel.hidden) {
+        el.editorPanel.hidden = true;
+        return;
+      }
       if (event.target.matches("textarea, input, select")) return;
       if (event.code === "Space") {
         event.preventDefault();
