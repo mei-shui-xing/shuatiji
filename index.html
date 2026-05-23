@@ -1,0 +1,194 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>刷题机 | 概率论常考题</title>
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <div class="app-shell">
+      <header class="topbar">
+        <div class="topbar__meta">
+          <span class="status-dot"></span>
+          <span>刷题</span>
+          <span>·</span>
+          <select id="bankSelect" class="plain-select" aria-label="选择题库"></select>
+          <span>·</span>
+          <span id="bankSize">000</span>
+        </div>
+        <div class="brand">
+          <strong>刷题就是胜利</strong>
+          <small>- 先想 再翻 再记 -</small>
+        </div>
+        <div class="topbar__date">
+          <span id="todayLabel">-- --- ----</span>
+          <span>·</span>
+          <span id="dayLabel">第 01 天</span>
+        </div>
+      </header>
+
+      <main class="workspace">
+        <aside class="left-panel panel">
+          <section class="metric-section">
+            <div class="section-title"><span>今日</span></div>
+            <div class="metric-grid">
+              <div>
+                <strong id="passCount">0</strong>
+                <small>已会</small>
+              </div>
+              <div>
+                <strong id="seenCount">0</strong>
+                <small>已看</small>
+              </div>
+            </div>
+          </section>
+
+          <section class="control-section">
+            <div class="section-title"><span>节奏</span></div>
+            <div class="tempo-readout"><span id="tempoValue">3.5</span><small>秒/题</small></div>
+            <input id="tempoRange" type="range" min="1" max="8" step="0.5" value="3.5" />
+            <div class="range-labels"><span>快</span><span>慢</span></div>
+          </section>
+
+          <section class="control-section">
+            <div class="section-title"><span>显示</span></div>
+            <div class="segmented" role="group" aria-label="答案显示方式">
+              <button class="is-active" data-view="prompt">题</button>
+              <button data-view="answer">答</button>
+              <button data-view="both">全</button>
+            </div>
+          </section>
+
+          <section class="control-section">
+            <div class="section-title"><span>模式</span></div>
+            <button id="autoBtn" class="mode-button">
+              <span>自动</span>
+              <em>连刷</em>
+            </button>
+            <button id="manualBtn" class="mode-button is-active">
+              <span>手动</span>
+              <em>一步</em>
+            </button>
+            <button id="shuffleBtn" class="mode-button">
+              <span>乱序</span>
+              <em>打乱</em>
+            </button>
+          </section>
+
+          <section class="control-section">
+            <div class="section-title"><span>题库</span></div>
+            <button id="editorToggle" class="mode-button">
+              <span>编辑</span>
+              <em>题库</em>
+            </button>
+          </section>
+        </aside>
+
+        <section class="study-stage">
+          <div class="stage-topline">
+            <span id="cardCounter">· 001 / 000</span>
+            <span id="playState">已暂停</span>
+          </div>
+          <article class="formula-card" id="formulaCard">
+            <div class="chapter" id="cardChapter">概率论</div>
+            <h1 id="cardTitle">题目</h1>
+            <p class="pronunciation" id="cardPrompt">先在纸上算过程，这里只填最后答案。</p>
+            <label class="answer-box" for="answerInput">
+              <span>最后答案</span>
+              <input id="answerInput" type="text" autocomplete="off" placeholder="例如：1/6、0.271、2Φ(1)-1" />
+            </label>
+            <div class="divider-mark"></div>
+            <div class="answer" id="cardAnswer"></div>
+            <div class="hint" id="cardHint"></div>
+            <div class="rating-actions" id="ratingActions" aria-label="自评结果">
+              <button data-rating="correct">做对了</button>
+              <button data-rating="partial">半会</button>
+              <button data-rating="wrong">重做</button>
+            </div>
+          </article>
+          <div class="stage-actions">
+            <button id="prevBtn" class="nav-button"><span>上一题</span><kbd>←</kbd></button>
+            <button id="revealBtn" class="primary-action"><span id="revealText">提交并看解析</span><kbd>Enter</kbd></button>
+            <button id="nextBtn" class="nav-button"><span>下一题</span><kbd>→</kbd></button>
+          </div>
+        </section>
+
+        <aside class="right-panel panel">
+          <section class="session-box">
+            <div class="section-title"><span>进度</span></div>
+            <div class="session-count">
+              <strong id="sessionNumber">1</strong>
+              <span>/</span>
+              <span id="sessionTotal">000</span>
+            </div>
+          </section>
+
+          <section class="queue-list" id="queueList" aria-label="题目列表"></section>
+
+          <section class="daily-goal">
+            <button id="markKnownBtn" class="pass-ring" aria-label="标记会了">会</button>
+            <div>
+              <strong><span id="knownCount">0</span>/<span id="goalCount">20</span></strong>
+              <small>做对目标</small>
+            </div>
+          </section>
+        </aside>
+      </main>
+
+      <section class="editor-panel" id="editorPanel" hidden>
+        <div class="editor-panel__head">
+          <div>
+            <strong>题库编辑</strong>
+            <small>输入学科生成提示词，复制给 ChatGPT 或 DeepSeek；把生成的 JSON 粘贴回来后应用到本机。</small>
+          </div>
+          <button id="closeEditor" class="icon-button" aria-label="关闭编辑器">×</button>
+        </div>
+        <div class="editor-tools">
+          <label class="tool-field">
+            <span>学科 / 考试方向</span>
+            <input id="promptSubject" type="text" value="数理统计与抽样调查" placeholder="例如：数理统计与抽样调查" />
+          </label>
+          <label class="tool-field tool-field--small">
+            <span>题目数</span>
+            <input id="promptCount" type="number" min="5" max="200" step="5" value="40" />
+          </label>
+          <div class="tool-actions">
+            <button id="makePromptBtn">生成提示词</button>
+            <button id="copyPromptBtn">复制提示词</button>
+          </div>
+          <textarea id="promptOutput" class="prompt-output" spellcheck="false" aria-label="给 AI 生成题库用的提示词"></textarea>
+          <div class="import-row">
+            <label class="file-import">
+              <span>从文件导入</span>
+              <input id="bankFileInput" type="file" accept=".json,.txt,.md" />
+            </label>
+            <button id="importTextBtn">解析下方文本</button>
+            <span id="editorStatus" class="editor-status" aria-live="polite"></span>
+          </div>
+        </div>
+        <textarea id="bankEditor" spellcheck="false"></textarea>
+        <div class="editor-actions">
+          <button id="resetBankBtn">恢复内置题库</button>
+          <button id="applyBankBtn" class="dark-button">应用到本机</button>
+        </div>
+      </section>
+
+      <footer class="bottombar">
+        <p><em>“纸上写过程，屏幕填结果。”</em> - 刷题就是胜利</p>
+        <div class="shortcuts">
+          <kbd>Enter</kbd><span>提交</span>
+          <kbd>空格</kbd><span>下一题</span>
+          <kbd>←</kbd><kbd>→</kbd><span>切题</span>
+          <kbd>K</kbd><span>会</span>
+          <kbd>H</kbd><span>半会</span>
+          <kbd>J</kbd><span>重做</span>
+        </div>
+      </footer>
+    </div>
+
+    <script src="./data/catalog.js"></script>
+    <script src="./data/probability.js"></script>
+    <script src="./app.js"></script>
+  </body>
+</html>
