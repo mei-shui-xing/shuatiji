@@ -940,6 +940,15 @@ textarea.prompt-output {
 }
 
 @media (max-width: 940px) and (orientation: landscape), (max-width: 760px) and (orientation: portrait) {
+  :root {
+    --mobile-topbar: clamp(38px, 13vh, 50px);
+    --mobile-footer: clamp(24px, 8vh, 32px);
+    --mobile-left: clamp(126px, 21vw, 168px);
+    --mobile-right: clamp(150px, 25vw, 210px);
+    --mobile-title: clamp(24px, 8.2vh, 46px);
+    --mobile-prompt: clamp(12px, 3.6vh, 18px);
+  }
+
   html,
   body {
     height: 100%;
@@ -949,16 +958,18 @@ textarea.prompt-output {
   .app-shell {
     height: 100vh;
     min-height: 0;
-    grid-template-rows: 54px 1fr 36px;
+    grid-template-rows: var(--mobile-topbar) 1fr var(--mobile-footer);
     overflow: hidden;
   }
 
   .topbar {
     min-height: 0;
-    grid-template-columns: 1fr auto 1fr;
-    gap: 8px;
-    padding: 0 14px;
+    grid-template-columns: minmax(0, 1fr) auto minmax(0, 0.72fr);
+    gap: 6px;
+    padding: 0 10px;
     text-align: left;
+    letter-spacing: 0.08em;
+    font-size: 10px;
   }
 
   .topbar__meta,
@@ -966,15 +977,19 @@ textarea.prompt-output {
     justify-content: flex-start;
     flex-wrap: nowrap;
     white-space: nowrap;
-    gap: 8px;
+    gap: 6px;
+    min-width: 0;
+    overflow: hidden;
   }
 
   .topbar__date {
     justify-content: flex-end;
+    text-overflow: clip;
   }
 
   .brand strong {
-    font-size: 22px;
+    font-size: clamp(18px, 5.6vh, 25px);
+    white-space: nowrap;
   }
 
   .brand small {
@@ -982,44 +997,48 @@ textarea.prompt-output {
   }
 
   .workspace {
-    grid-template-columns: 178px minmax(360px, 1fr) 230px;
+    grid-template-columns: var(--mobile-left) minmax(0, 1fr) var(--mobile-right);
+    min-width: 0;
   }
 
   .left-panel {
     border-right: 2px solid var(--line);
     border-bottom: 0;
     display: flex;
-    padding: 14px 12px;
-    gap: 10px;
+    padding: 8px 9px;
+    gap: 7px;
     overflow: auto;
   }
 
   .right-panel {
     display: grid;
-    grid-template-rows: 94px 1fr 72px;
+    grid-template-rows: clamp(64px, 23vh, 86px) 1fr clamp(50px, 17vh, 64px);
+    min-width: 0;
   }
 
   .section-title {
-    margin-bottom: 8px;
+    margin-bottom: 5px;
+    font-size: 9px;
+    letter-spacing: 0.18em;
   }
 
   .metric-grid {
-    gap: 12px;
+    gap: 8px;
   }
 
   .metric-grid strong,
   .session-count strong {
-    font-size: 32px;
+    font-size: clamp(26px, 10vh, 36px);
   }
 
   .tempo-readout span {
-    font-size: 28px;
+    font-size: clamp(24px, 9vh, 32px);
   }
 
   .mode-button {
-    min-height: 38px;
-    margin-bottom: 8px;
-    padding: 0 12px;
+    min-height: 32px;
+    margin-bottom: 6px;
+    padding: 0 10px;
   }
 
   .mode-button em {
@@ -1028,76 +1047,115 @@ textarea.prompt-output {
   }
 
   .segmented button {
-    height: 36px;
+    height: 32px;
   }
 
   .study-stage {
-    grid-template-rows: 42px minmax(0, 1fr) 58px;
+    grid-template-rows: clamp(28px, 10vh, 38px) minmax(0, 1fr) clamp(44px, 15vh, 54px);
+    min-width: 0;
   }
 
   .stage-topline {
-    gap: 16vw;
-    font-size: 11px;
+    justify-content: space-around;
+    gap: 0;
+    font-size: 10px;
+    letter-spacing: 0.18em;
   }
 
   .formula-card {
-    width: 92%;
-    gap: 12px;
-    padding: 10px 8px 18px;
+    width: 94%;
+    gap: clamp(6px, 2vh, 10px);
+    padding: 6px 6px 10px;
   }
 
   .formula-card h1 {
-    font-size: clamp(30px, 6vw, 58px);
+    font-size: var(--mobile-title);
+    line-height: 1;
   }
 
   .pronunciation {
-    font-size: clamp(15px, 2.4vw, 20px);
+    font-size: var(--mobile-prompt);
+    line-height: 1.35;
+  }
+
+  .chapter {
+    font-size: 10px;
+    letter-spacing: 0.18em;
+  }
+
+  .divider-mark {
+    display: none;
   }
 
   .answer-box input {
-    min-height: 42px;
-    font-size: 18px;
+    min-height: clamp(30px, 10vh, 38px);
+    font-size: clamp(14px, 4vh, 18px);
   }
 
   .stage-actions {
-    min-height: 58px;
+    min-height: 0;
     grid-template-columns: 1fr 1.2fr 1fr;
   }
 
+  .nav-button span,
+  .primary-action span {
+    font-size: clamp(13px, 4.4vh, 17px);
+  }
+
   .session-box {
-    padding: 18px 20px 12px;
+    padding: 10px 14px 8px;
   }
 
   .queue-list {
-    padding: 14px 20px;
+    padding: 10px 14px;
   }
 
   .queue-item {
-    padding: 10px 0;
+    padding: 8px 0;
   }
 
   .queue-item strong {
-    font-size: 17px;
+    font-size: clamp(14px, 4vh, 17px);
+  }
+
+  .queue-item span {
+    font-size: 10px;
+    line-height: 1.4;
   }
 
   .daily-goal {
-    gap: 14px;
+    gap: 10px;
   }
 
   .pass-ring {
-    width: 46px;
-    height: 46px;
+    width: clamp(38px, 12vh, 48px);
+    height: clamp(38px, 12vh, 48px);
+  }
+
+  .daily-goal strong {
+    font-size: clamp(18px, 6vh, 24px);
   }
 
   .bottombar {
-    grid-template-columns: 1fr auto;
-    padding: 0 14px;
-    gap: 8px;
+    grid-template-columns: minmax(0, 1fr) auto;
+    padding: 0 10px;
+    gap: 6px;
+    font-size: 10px;
+    letter-spacing: 0.08em;
+    overflow: hidden;
+  }
+
+  .bottombar p {
+    min-width: 0;
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
   }
 
   .shortcuts {
     justify-content: flex-end;
     flex-wrap: nowrap;
+    overflow: hidden;
   }
 
   .shortcuts kbd,
@@ -1130,6 +1188,13 @@ textarea.prompt-output {
 }
 
 @media (max-width: 760px) and (orientation: portrait) {
+  :root {
+    --mobile-left: clamp(112px, 18vh, 148px);
+    --mobile-right: clamp(132px, 22vh, 178px);
+    --mobile-title: clamp(22px, 5.2vh, 40px);
+    --mobile-prompt: clamp(11px, 2.6vh, 16px);
+  }
+
   html,
   body {
     width: 100%;
@@ -1143,10 +1208,26 @@ textarea.prompt-output {
     position: fixed;
     top: 0;
     left: 0;
-    width: 100vh;
-    height: 100vw;
+    width: 100dvh;
+    height: 100dvw;
     max-width: none;
     transform: rotate(90deg) translateY(-100%);
     transform-origin: top left;
+  }
+
+  .topbar__date {
+    display: none;
+  }
+
+  .topbar {
+    grid-template-columns: minmax(0, 1fr) auto;
+  }
+
+  .bottombar {
+    grid-template-columns: 1fr;
+  }
+
+  .shortcuts {
+    display: none;
   }
 }

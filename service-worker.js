@@ -1,8 +1,8 @@
-const CACHE_NAME = "shuatiji-landscape-pwa-20260523-2";
+const CACHE_NAME = "shuatiji-adaptive-landscape-20260524";
 const ASSETS = [
   "./",
   "./index.html",
-  "./styles.css?v=20260523-landscape-pwa2",
+  "./styles.css?v=20260524-adaptive-landscape",
   "./app.js?v=20260523-banks",
   "./data/catalog.js",
   "./data/probability.js",
