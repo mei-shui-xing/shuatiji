@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="theme-color" content="#b91422" />
     <title>刷题机 | 概率论常考题</title>
-    <link rel="stylesheet" href="./styles.css?v=20260524-compact-landscape" />
+    <link rel="stylesheet" href="./styles.css?v=20260525-scoped-symbols" />
     <link rel="manifest" href="./manifest.json" />
     <link rel="apple-touch-icon" href="./icons/icon-192.png" />
   </head>
@@ -96,11 +96,12 @@
           <article class="formula-card" id="formulaCard">
             <div class="chapter" id="cardChapter">概率论</div>
             <h1 id="cardTitle">题目</h1>
-            <p class="pronunciation" id="cardPrompt">先在纸上算过程，这里只填最后答案。</p>
+            <div class="pronunciation" id="cardPrompt">先在纸上算过程，这里只填最后答案。</div>
             <label class="answer-box" for="answerInput">
               <span>最后答案</span>
               <input id="answerInput" type="text" autocomplete="off" placeholder="例如：1/6、0.271、2Φ(1)-1" />
             </label>
+            <div class="symbol-toolbar" id="symbolToolbar" aria-label="常用符号快捷输入"></div>
             <div class="divider-mark"></div>
             <div class="answer" id="cardAnswer"></div>
             <div class="hint" id="cardHint"></div>
@@ -196,7 +197,7 @@
 
     <script src="./data/catalog.js"></script>
     <script src="./data/probability.js"></script>
-    <script src="./app.js?v=20260523-banks"></script>
+    <script src="./app.js?v=20260525-scoped-symbols"></script>
     <script>
       if ("serviceWorker" in navigator) {
         window.addEventListener("load", () => {

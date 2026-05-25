@@ -1,9 +1,9 @@
-const CACHE_NAME = "shuatiji-compact-landscape-20260524";
+const CACHE_NAME = "shuatiji-scoped-symbols-20260525";
 const ASSETS = [
   "./",
   "./index.html",
-  "./styles.css?v=20260524-compact-landscape",
-  "./app.js?v=20260523-banks",
+  "./styles.css?v=20260525-scoped-symbols",
+  "./app.js?v=20260525-scoped-symbols",
   "./data/catalog.js",
   "./data/probability.js",
   "./manifest.json",

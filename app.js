@@ -3,6 +3,8 @@
   const builtInBanks = window.STUDY_BANKS || {};
   const state = {
     bankId: catalog[0]?.id || Object.keys(builtInBanks)[0],
+    bankName: "",
+    bankSubject: "",
     cards: [],
     order: [],
     index: 0,
@@ -38,6 +40,7 @@
     cardTitle: document.querySelector("#cardTitle"),
     cardPrompt: document.querySelector("#cardPrompt"),
     answerInput: document.querySelector("#answerInput"),
+    symbolToolbar: document.querySelector("#symbolToolbar"),
     cardAnswer: document.querySelector("#cardAnswer"),
     cardHint: document.querySelector("#cardHint"),
     ratingActions: document.querySelector("#ratingActions"),
@@ -267,6 +270,38 @@
     return copy;
   }
 
+  function textFromBlocks(blocks) {
+    if (!Array.isArray(blocks)) return "";
+    return blocks
+      .map((block) => {
+        if (typeof block === "string") return block;
+        if (!block || typeof block !== "object") return "";
+        return block.text || block.content || block.label || block.alt || "";
+      })
+      .filter(Boolean)
+      .join("\n");
+  }
+
+  function normalizeBlocks(blocks, fallbackText = "") {
+    const source = Array.isArray(blocks) ? blocks : fallbackText ? [{ type: "text", text: fallbackText }] : [];
+    return source
+      .map((block) => {
+        if (typeof block === "string") return { type: "text", text: block };
+        if (!block || typeof block !== "object") return null;
+        const type = String(block.type || "text").trim().toLowerCase();
+        if (type === "paragraph") return { ...block, type: "text", text: block.text || block.content || "" };
+        return { ...block, type };
+      })
+      .filter(Boolean);
+  }
+
+  function firstAvailableBlocks(card, names) {
+    for (const name of names) {
+      if (Array.isArray(card[name])) return card[name];
+    }
+    return null;
+  }
+
   function setDateLabels() {
     const now = new Date();
     const formatter = new Intl.DateTimeFormat("en-GB", {
@@ -285,18 +320,27 @@
       id: safeBank.id || slugify(safeBank.name || safeBank.subject || "bank"),
       name: safeBank.name || `${safeBank.subject || "自定义"}题库`,
       subject: safeBank.subject || safeBank.name || "自定义",
-      cards: (safeBank.cards || []).map((card, index) => ({
-        id: card.id || `${safeBank.id || "bank"}-${pad(index + 1)}`,
-        chapter: card.chapter || safeBank.subject || "未分类",
-        title: card.title || `题目 ${index + 1}`,
-        prompt: card.prompt || "请回忆答案。",
-        expected: card.expected || "",
-        accepted: card.accepted || [],
-        answer: card.answer || card.solution || "",
-        solution: card.solution || card.answer || "",
-        hint: card.hint || card.keyPoint || "",
-        keyPoint: card.keyPoint || card.hint || "",
-      })),
+      cards: (safeBank.cards || []).map((card, index) => {
+        const promptSource = firstAvailableBlocks(card, ["promptBlocks", "questionBlocks", "blocks"]);
+        const solutionSource = firstAvailableBlocks(card, ["solutionBlocks", "answerBlocks", "explanationBlocks"]);
+        const prompt = card.prompt || card.question || textFromBlocks(promptSource) || "请回忆答案。";
+        const solution = card.solution || card.answer || textFromBlocks(solutionSource) || "";
+        return {
+          ...card,
+          id: card.id || `${safeBank.id || "bank"}-${pad(index + 1)}`,
+          chapter: card.chapter || safeBank.subject || "未分类",
+          title: card.title || `题目 ${index + 1}`,
+          prompt,
+          promptBlocks: normalizeBlocks(promptSource, prompt),
+          expected: card.expected || "",
+          accepted: Array.isArray(card.accepted) ? card.accepted : [],
+          answer: card.answer || card.solution || solution,
+          solution,
+          solutionBlocks: normalizeBlocks(solutionSource, solution),
+          hint: card.hint || card.keyPoint || "",
+          keyPoint: card.keyPoint || card.hint || "",
+        };
+      }),
     };
   }
 
@@ -329,6 +373,57 @@
     const subject = el.promptSubject.value.trim() || currentBankName();
     const count = Math.max(5, Math.min(200, Number(el.promptCount.value) || 40));
     const bankId = slugify(subject);
+    const needsGraphics = subjectNeedsGraphics(subject);
+    const cardTemplate = needsGraphics
+      ? {
+          id: `${bankId}-001`,
+          chapter: "章节或知识点",
+          title: "短标题",
+          prompt: "题干摘要，兼容旧版显示。",
+          promptBlocks: [
+            { type: "text", text: "题干文字。要求学生在纸上写过程，网页里只填最后答案。" },
+            {
+              type: "plot",
+              spec: {
+                xMin: -5,
+                xMax: 5,
+                yMin: -5,
+                yMax: 5,
+                grid: true,
+                functions: [{ expr: "x^2 - 1", label: "f(x)" }],
+                points: [{ x: 1, y: 0, label: "A" }],
+              },
+            },
+          ],
+          expected: "最终答案",
+          accepted: ["等价答案1", "等价答案2"],
+          answer: "参考答案摘要，兼容旧版显示。",
+          solutionBlocks: [
+            { type: "text", text: "参考答案：写清关键公式、代入过程和最终结果。" },
+            { type: "math", text: "x^2 - 1 = 0" },
+          ],
+          hint: "一句话关键点或易错点",
+        }
+      : {
+          id: `${bankId}-001`,
+          chapter: "章节或知识点",
+          title: "短标题",
+          prompt: "题干。要求学生在纸上写过程，网页里只填最后答案。",
+          expected: "最终答案",
+          accepted: ["等价答案1", "等价答案2"],
+          answer: "参考答案：写清关键公式、代入过程和最终结果。",
+          hint: "一句话关键点或易错点",
+        };
+    const graphicRules = needsGraphics
+      ? [
+          "",
+          "图形题额外要求：",
+          "7. 只有题目确实需要图时才使用 promptBlocks/solutionBlocks；不需要图的题仍可只用 prompt/answer。",
+          "8. 不要输出 HTML。图形用结构化 block：函数图用 {\"type\":\"plot\",\"spec\":...}，电路图用 {\"type\":\"circuit\",\"spec\":...}，化工流程图用 {\"type\":\"process\",\"spec\":...}。",
+          "9. plot.spec 支持 xMin/xMax/yMin/yMax/grid/functions/points；函数表达式用 x、+、-、*、/、^、sin、cos、tan、sqrt、abs、ln、log、exp。",
+          "10. circuit.spec 用 nodes 和 components；process.spec 用 units 和 streams。无法结构化表达时才用 image block。",
+        ]
+      : [];
     return [
       `你是熟悉成人考试/期末考试命题规律的题库整理助手。请为“${subject}”生成 ${count} 道可刷题的题目。`,
       "",
@@ -339,6 +434,7 @@
       "4. 题型以考试高频基础题、计算题、概念辨析题为主，难度从基础到中等，避免偏题怪题。",
       "5. 如果有可机器粗略匹配的最终结果，把它放入 expected；等价写法放入 accepted 数组。",
       "6. 数学符号尽量使用普通文本，例如 x^2、sqrt(n)、Phi(1)、C(n,k)、mu、sigma^2，避免复杂 LaTeX。",
+      ...graphicRules,
       "",
       "必须使用这个结构：",
       JSON.stringify(
@@ -348,18 +444,7 @@
           subject,
           version: "2026-ai-generated",
           dailyGoal: 20,
-          cards: [
-            {
-              id: `${bankId}-001`,
-              chapter: "章节或知识点",
-              title: "短标题",
-              prompt: "题干。要求学生在纸上写过程，网页里只填最后答案。",
-              expected: "最终答案",
-              accepted: ["等价答案1", "等价答案2"],
-              answer: "参考答案：写清关键公式、代入过程和最终结果。",
-              hint: "一句话关键点或易错点",
-            },
-          ],
+          cards: [cardTemplate],
         },
         null,
         2,
@@ -367,6 +452,12 @@
       "",
       "请直接生成完整 JSON。cards 数量必须等于题目数；id 从 001 连续编号；所有字符串内容用中文。",
     ].join("\n");
+  }
+
+  function subjectNeedsGraphics(subject) {
+    return /函数|图像|作图|画图|解析几何|高数|微积分|电工|电路|模电|数电|物理|力学|化工|流程|精馏|传热|流体|反应器/.test(
+      String(subject || ""),
+    );
   }
 
   function refreshPrompt() {
@@ -467,6 +558,8 @@
     state.bankId = bankId;
     const bank = normalizeBank(getBank(bankId));
     el.bankSelect.value = state.bankId;
+    state.bankName = bank.name || "";
+    state.bankSubject = bank.subject || "";
     state.cards = bank.cards;
     state.order = state.shuffle ? shuffleArray(state.cards.map((_, index) => index)) : state.cards.map((_, index) => index);
     state.index = 0;
@@ -519,6 +612,295 @@
       .replaceAll("'", "&#039;");
   }
 
+  function escapeAttr(value) {
+    return escapeHtml(value).replaceAll("`", "&#096;");
+  }
+
+  function renderText(value) {
+    return escapeHtml(value).replaceAll("\n", "<br>");
+  }
+
+  function renderBlocks(blocks) {
+    const normalized = normalizeBlocks(blocks);
+    if (!normalized.length) return "";
+    return normalized.map(renderBlock).join("");
+  }
+
+  function renderBlock(block) {
+    if (block.type === "math") {
+      return `<div class="content-block math-block">${renderText(block.text || block.content || "")}</div>`;
+    }
+    if (block.type === "image") {
+      const src = block.src || block.url || "";
+      if (!src) return "";
+      return `<figure class="content-block media-block"><img src="${escapeAttr(src)}" alt="${escapeAttr(block.alt || block.caption || "题目图片")}" loading="lazy" />${
+        block.caption ? `<figcaption>${renderText(block.caption)}</figcaption>` : ""
+      }</figure>`;
+    }
+    if (block.type === "table") return renderTableBlock(block);
+    if (block.type === "plot") return renderPlotBlock(block.spec || block);
+    if (block.type === "circuit") return renderCircuitBlock(block.spec || block);
+    if (block.type === "process") return renderProcessBlock(block.spec || block);
+    if (block.type === "note") return `<p class="content-block note-block">${renderText(block.text || block.content || "")}</p>`;
+    return `<p class="content-block text-block">${renderText(block.text || block.content || "")}</p>`;
+  }
+
+  function renderTableBlock(block) {
+    const rows = Array.isArray(block.rows) ? block.rows : [];
+    if (!rows.length) return "";
+    return `<div class="content-block table-block"><table>${rows
+      .map(
+        (row) =>
+          `<tr>${(Array.isArray(row) ? row : []).map((cell) => `<td>${renderText(cell)}</td>`).join("")}</tr>`,
+      )
+      .join("")}</table></div>`;
+  }
+
+  function toNumber(value, fallback) {
+    const parsed = Number(value);
+    return Number.isFinite(parsed) ? parsed : fallback;
+  }
+
+  function compilePlotExpression(expr) {
+    const source = String(expr || "")
+      .replaceAll("^", "**")
+      .replace(/\bln\s*\(/g, "log(")
+      .replace(/\bX\b/g, "x")
+      .replace(/\bpi\b/gi, "PI")
+      .replace(/\be\b/g, "E");
+    const allowedNames = new Set([
+      "x",
+      "X",
+      "sin",
+      "cos",
+      "tan",
+      "asin",
+      "acos",
+      "atan",
+      "sqrt",
+      "abs",
+      "log",
+      "exp",
+      "pow",
+      "min",
+      "max",
+      "floor",
+      "ceil",
+      "PI",
+      "E",
+      "pi",
+      "e",
+    ]);
+    const names = source.match(/[A-Za-z_][A-Za-z0-9_]*/g) || [];
+    if (names.some((name) => !allowedNames.has(name))) return null;
+    try {
+      return new Function(
+        "x",
+        `"use strict"; const {sin,cos,tan,asin,acos,atan,sqrt,abs,log,exp,pow,min,max,floor,ceil,PI,E}=Math; return (${source});`,
+      );
+    } catch {
+      return null;
+    }
+  }
+
+  function renderPlotBlock(spec) {
+    const xMin = toNumber(spec.xMin, -5);
+    const xMax = toNumber(spec.xMax, 5);
+    const yMin = toNumber(spec.yMin, -5);
+    const yMax = toNumber(spec.yMax, 5);
+    if (xMin >= xMax || yMin >= yMax) return `<div class="content-block graphic-error">图形范围无效。</div>`;
+
+    const width = 680;
+    const height = 380;
+    const padX = 44;
+    const padY = 28;
+    const plotW = width - padX * 2;
+    const plotH = height - padY * 2;
+    const sx = (x) => padX + ((x - xMin) / (xMax - xMin)) * plotW;
+    const sy = (y) => padY + plotH - ((y - yMin) / (yMax - yMin)) * plotH;
+    const colors = ["#b91422", "#1769aa", "#2d7d46", "#7a4b9d", "#b45f06"];
+    const ticks = Array.from({ length: 11 }, (_, index) => index / 10);
+    const grid = spec.grid !== false
+      ? ticks
+          .map((t) => {
+            const x = padX + t * plotW;
+            const y = padY + t * plotH;
+            return `<line class="plot-grid" x1="${x}" y1="${padY}" x2="${x}" y2="${height - padY}" /><line class="plot-grid" x1="${padX}" y1="${y}" x2="${width - padX}" y2="${y}" />`;
+          })
+          .join("")
+      : "";
+    const axes = [
+      yMin <= 0 && yMax >= 0
+        ? `<line class="plot-axis" x1="${padX}" y1="${sy(0)}" x2="${width - padX}" y2="${sy(0)}" />`
+        : "",
+      xMin <= 0 && xMax >= 0
+        ? `<line class="plot-axis" x1="${sx(0)}" y1="${padY}" x2="${sx(0)}" y2="${height - padY}" />`
+        : "",
+    ].join("");
+    const labels = ticks
+      .filter((_, index) => index % 2 === 0)
+      .map((t) => {
+        const xValue = xMin + t * (xMax - xMin);
+        const yValue = yMax - t * (yMax - yMin);
+        return `<text class="plot-tick" x="${padX + t * plotW}" y="${height - 6}">${formatTick(xValue)}</text><text class="plot-tick plot-tick-y" x="8" y="${padY + t * plotH + 4}">${formatTick(yValue)}</text>`;
+      })
+      .join("");
+    const paths = (Array.isArray(spec.functions) ? spec.functions : [])
+      .map((item, index) => {
+        const fn = compilePlotExpression(item.expr || item.expression || item.y);
+        if (!fn) return "";
+        let path = "";
+        for (let i = 0; i <= 240; i += 1) {
+          const x = xMin + (i / 240) * (xMax - xMin);
+          let y;
+          try {
+            y = Number(fn(x));
+          } catch {
+            y = NaN;
+          }
+          if (!Number.isFinite(y) || y < yMin - Math.abs(yMax - yMin) || y > yMax + Math.abs(yMax - yMin)) {
+            path += " ";
+            continue;
+          }
+          path += `${path.trim() ? "L" : "M"}${sx(x).toFixed(2)} ${sy(y).toFixed(2)} `;
+        }
+        const color = item.color || colors[index % colors.length];
+        const label = item.label
+          ? `<text class="plot-label" x="${padX + 8}" y="${padY + 18 + index * 18}" fill="${escapeAttr(color)}">${escapeHtml(item.label)}</text>`
+          : "";
+        return `<path class="plot-line" d="${path.trim()}" stroke="${escapeAttr(color)}" />${label}`;
+      })
+      .join("");
+    const points = (Array.isArray(spec.points) ? spec.points : [])
+      .map((point) => {
+        const x = toNumber(point.x, NaN);
+        const y = toNumber(point.y, NaN);
+        if (!Number.isFinite(x) || !Number.isFinite(y)) return "";
+        return `<g class="plot-point"><circle cx="${sx(x)}" cy="${sy(y)}" r="4" />${
+          point.label ? `<text x="${sx(x) + 7}" y="${sy(y) - 7}">${escapeHtml(point.label)}</text>` : ""
+        }</g>`;
+      })
+      .join("");
+    const caption = spec.caption || spec.title || "";
+    return `<figure class="content-block graphic-block plot-block"><svg viewBox="0 0 ${width} ${height}" role="img" aria-label="${escapeAttr(caption || "函数图")}">${grid}${axes}${labels}${paths}${points}</svg>${
+      caption ? `<figcaption>${renderText(caption)}</figcaption>` : ""
+    }</figure>`;
+  }
+
+  function formatTick(value) {
+    const rounded = Math.abs(value) < 1e-8 ? 0 : value;
+    return Number.isInteger(rounded) ? String(rounded) : rounded.toFixed(1);
+  }
+
+  function renderCircuitBlock(spec) {
+    const nodes = new Map((Array.isArray(spec.nodes) ? spec.nodes : []).map((node) => [node.id, node]));
+    const components = Array.isArray(spec.components) ? spec.components : [];
+    if (!nodes.size || !components.length) return `<div class="content-block graphic-error">电路图缺少 nodes 或 components。</div>`;
+    const scale = 88;
+    const margin = 42;
+    const coords = [...nodes.values()].map((node) => ({ x: toNumber(node.x, 0), y: toNumber(node.y, 0) }));
+    const minX = Math.min(...coords.map((item) => item.x));
+    const maxX = Math.max(...coords.map((item) => item.x));
+    const minY = Math.min(...coords.map((item) => item.y));
+    const maxY = Math.max(...coords.map((item) => item.y));
+    const width = Math.max(360, (maxX - minX + 1) * scale + margin * 2);
+    const height = Math.max(220, (maxY - minY + 1) * scale + margin * 2);
+    const px = (node) => margin + (toNumber(node.x, 0) - minX) * scale;
+    const py = (node) => margin + (toNumber(node.y, 0) - minY) * scale;
+    const parts = components
+      .map((component) => {
+        const a = nodes.get(component.from);
+        const b = nodes.get(component.to);
+        if (!a || !b) return "";
+        const x1 = px(a);
+        const y1 = py(a);
+        const x2 = px(b);
+        const y2 = py(b);
+        const labelX = (x1 + x2) / 2;
+        const labelY = (y1 + y2) / 2 - 10;
+        const type = String(component.type || "wire").toLowerCase();
+        const label = component.label ? `<text class="schematic-label" x="${labelX}" y="${labelY}">${escapeHtml(component.label)}</text>` : "";
+        if (type.includes("resistor")) {
+          const zig = makeZigzagPath(x1, y1, x2, y2);
+          return `<path class="schematic-line" d="${zig}" />${label}`;
+        }
+        if (type.includes("voltage") || type.includes("source")) {
+          return `<line class="schematic-line" x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" /><circle class="schematic-symbol" cx="${labelX}" cy="${(y1 + y2) / 2}" r="18" />${label}`;
+        }
+        return `<line class="schematic-line" x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" />${label}`;
+      })
+      .join("");
+    const nodeMarks = [...nodes.values()]
+      .map((node) => `<circle class="schematic-node" cx="${px(node)}" cy="${py(node)}" r="4" />`)
+      .join("");
+    return `<figure class="content-block graphic-block"><svg viewBox="0 0 ${width} ${height}" role="img" aria-label="电路图">${parts}${nodeMarks}</svg>${
+      spec.caption ? `<figcaption>${renderText(spec.caption)}</figcaption>` : ""
+    }</figure>`;
+  }
+
+  function makeZigzagPath(x1, y1, x2, y2) {
+    const steps = 8;
+    const dx = x2 - x1;
+    const dy = y2 - y1;
+    const len = Math.hypot(dx, dy) || 1;
+    const nx = -dy / len;
+    const ny = dx / len;
+    let path = `M${x1} ${y1}`;
+    for (let i = 1; i < steps; i += 1) {
+      const t = i / steps;
+      const offset = (i % 2 ? 9 : -9);
+      path += ` L${x1 + dx * t + nx * offset} ${y1 + dy * t + ny * offset}`;
+    }
+    return `${path} L${x2} ${y2}`;
+  }
+
+  function renderProcessBlock(spec) {
+    const units = Array.isArray(spec.units) ? spec.units : [];
+    const streams = Array.isArray(spec.streams) ? spec.streams : [];
+    if (!units.length) return `<div class="content-block graphic-error">流程图缺少 units。</div>`;
+    const map = new Map(units.map((unit) => [unit.id, unit]));
+    const width = 720;
+    const height = 360;
+    const ux = (unit) => 60 + toNumber(unit.x, 0) * 90;
+    const uy = (unit) => 50 + toNumber(unit.y, 0) * 70;
+    const markerId = `arrow-${Math.random().toString(36).slice(2)}`;
+    const streamLines = streams
+      .map((stream) => {
+        const from = map.get(stream.from);
+        const to = map.get(stream.to);
+        if (!from || !to) return "";
+        const x1 = ux(from) + 54;
+        const y1 = uy(from) + 28;
+        const x2 = ux(to);
+        const y2 = uy(to) + 28;
+        return `<line class="process-stream" x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" marker-end="url(#${markerId})" />${
+          stream.label ? `<text class="schematic-label" x="${(x1 + x2) / 2}" y="${(y1 + y2) / 2 - 8}">${escapeHtml(stream.label)}</text>` : ""
+        }`;
+      })
+      .join("");
+    const unitShapes = units
+      .map((unit) => {
+        const x = ux(unit);
+        const y = uy(unit);
+        const type = String(unit.type || "unit").toLowerCase();
+        const label = `<text class="process-label" x="${x + 34}" y="${y + 34}">${escapeHtml(unit.label || unit.id || "")}</text>`;
+        if (type.includes("tower") || type.includes("column")) {
+          return `<rect class="process-unit" x="${x + 10}" y="${y - 18}" width="48" height="92" rx="18" />${label}`;
+        }
+        if (type.includes("pump")) {
+          return `<circle class="process-unit" cx="${x + 34}" cy="${y + 28}" r="28" />${label}`;
+        }
+        if (type.includes("valve")) {
+          return `<path class="process-unit" d="M${x + 8} ${y + 12} L${x + 60} ${y + 44} M${x + 60} ${y + 12} L${x + 8} ${y + 44}" />${label}`;
+        }
+        return `<rect class="process-unit" x="${x}" y="${y}" width="68" height="56" rx="6" />${label}`;
+      })
+      .join("");
+    return `<figure class="content-block graphic-block"><svg viewBox="0 0 ${width} ${height}" role="img" aria-label="化工流程图"><defs><marker id="${markerId}" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><path d="M0,0 L8,4 L0,8 Z" /></marker></defs>${streamLines}${unitShapes}</svg>${
+      spec.caption ? `<figcaption>${renderText(spec.caption)}</figcaption>` : ""
+    }</figure>`;
+  }
+
   function render() {
     const card = currentCard();
     if (!card) return;
@@ -530,7 +912,8 @@
     el.sessionNumber.textContent = String(number);
     el.cardChapter.textContent = card.chapter;
     el.cardTitle.textContent = card.title;
-    el.cardPrompt.textContent = state.view === "answer" ? "先看答案模式" : card.prompt;
+    el.cardPrompt.innerHTML = state.view === "answer" ? renderBlocks([{ type: "text", text: "先看答案模式" }]) : renderBlocks(card.promptBlocks);
+    renderSymbolToolbar();
     el.answerInput.value = userAnswer;
     el.cardAnswer.innerHTML = renderSolution(card, userAnswer);
     el.cardHint.textContent = state.revealed || state.view !== "prompt" ? getRatingHint(rating) : "过程写在纸上；这里只填最后答案，然后提交看解析。";
@@ -562,7 +945,7 @@
         ${likely ? `<section><strong>自动提示</strong><p>${escapeHtml(likely)}</p></section>` : ""}
         <section>
           <strong>参考答案</strong>
-          <p>${escapeHtml(card.solution || card.answer).replaceAll("\n", "<br>")}</p>
+          <div class="answer-blocks">${renderBlocks(card.solutionBlocks)}</div>
         </section>
         <section>
           <strong>关键点</strong>
@@ -636,6 +1019,148 @@
     if (!card) return;
     state.stats.answers[card.id] = el.answerInput.value;
     saveStats();
+  }
+
+  const symbolProfiles = [
+    {
+      test: /概率|统计|抽样|分布|正态|随机|方差|期望|样本|贝叶斯|二项|泊松|密度/,
+      symbols: [
+        ["Φ()", "Phi / 正态分布函数"],
+        ["μ", "mu / 均值"],
+        ["σ", "sigma / 标准差"],
+        ["σ²", "sigma2 / 方差"],
+        ["λ", "lambda / 参数"],
+        ["√()", "sqrt / 根号"],
+        ["C(n,k)", "comb / 组合数"],
+        ["P(A|B)", "pab / 条件概率"],
+      ],
+      shortcuts: { phi: "Φ()", mu: "μ", sigma: "σ", sigma2: "σ²", lambda: "λ", lam: "λ", sqrt: "√()", comb: "C(n,k)", pab: "P(A|B)" },
+    },
+    {
+      test: /函数|图像|作图|画图|解析几何|高数|微积分|导数|积分|极限/,
+      symbols: [
+        ["x²", "x2 / 平方"],
+        ["√()", "sqrt / 根号"],
+        ["∫", "int / 积分"],
+        ["∑", "sum / 求和"],
+        ["π", "pi"],
+        ["e^()", "exp / 指数"],
+        ["∞", "inf / 无穷"],
+        ["≤", "<="],
+        ["≥", ">="],
+      ],
+      shortcuts: { x2: "x²", sqrt: "√()", int: "∫", sum: "∑", pi: "π", exp: "e^()", inf: "∞", infty: "∞", "<=": "≤", ">=": "≥" },
+    },
+    {
+      test: /电工|电路|模电|数电|电压|电流|电阻|交流|阻抗/,
+      symbols: [
+        ["Ω", "ohm / 欧姆"],
+        ["kΩ", "kohm"],
+        ["V", "电压"],
+        ["A", "电流"],
+        ["∠", "angle / 相角"],
+        ["√()", "sqrt / 根号"],
+        ["π", "pi"],
+      ],
+      shortcuts: { ohm: "Ω", kohm: "kΩ", angle: "∠", sqrt: "√()", pi: "π" },
+    },
+    {
+      test: /化工|流程|精馏|传热|流体|反应器|泵|换热|物料|能量衡算/,
+      symbols: [
+        ["Δ", "delta / 变化量"],
+        ["℃", "摄氏度"],
+        ["ρ", "rho / 密度"],
+        ["η", "eta / 效率或黏度"],
+        ["μ", "mu / 黏度"],
+        ["λ", "lambda"],
+        ["Re", "雷诺数"],
+        ["≤", "<="],
+        ["≥", ">="],
+      ],
+      shortcuts: { delta: "Δ", rho: "ρ", eta: "η", mu: "μ", lambda: "λ", lam: "λ", re: "Re", "<=": "≤", ">=": "≥" },
+    },
+  ];
+
+  const fallbackSymbols = [
+    ["≤", "<="],
+    ["≥", ">="],
+    ["≠", "!="],
+  ];
+
+  function currentSymbolProfile() {
+    const card = currentCard();
+    const context = [
+      state.bankName,
+      state.bankSubject,
+      card?.chapter,
+      card?.title,
+      card?.prompt,
+    ]
+      .filter(Boolean)
+      .join(" ");
+    return symbolProfiles.find((profile) => profile.test.test(context));
+  }
+
+  function renderSymbolToolbar() {
+    const profile = currentSymbolProfile();
+    const symbols = profile?.symbols || fallbackSymbols;
+    const buttons = symbols.map(([insert, title]) => {
+      const button = document.createElement("button");
+      button.type = "button";
+      button.dataset.insert = insert;
+      button.textContent = insert.replace("()", "");
+      button.title = title;
+      return button;
+    });
+    el.symbolToolbar.replaceChildren(...buttons);
+    el.symbolToolbar.hidden = buttons.length === 0;
+  }
+
+  function currentShortcutMap() {
+    const profile = currentSymbolProfile();
+    return {
+      "<=": "≤",
+      ">=": "≥",
+      "!=": "≠",
+      ...(profile?.shortcuts || {}),
+    };
+  }
+
+  function insertAnswerText(text) {
+    const input = el.answerInput;
+    const value = input.value;
+    const start = input.selectionStart ?? value.length;
+    const end = input.selectionEnd ?? start;
+    const nextValue = value.slice(0, start) + text + value.slice(end);
+    input.value = nextValue;
+
+    const cursorOffset = text.includes("()") ? text.indexOf("(") + 1 : text.length;
+    const cursor = start + cursorOffset;
+    input.focus();
+    input.setSelectionRange(cursor, cursor);
+    saveCurrentAnswer();
+  }
+
+  function expandAnswerShortcut() {
+    const input = el.answerInput;
+    const cursor = input.selectionStart ?? input.value.length;
+    if (cursor !== (input.selectionEnd ?? cursor)) return false;
+
+    const before = input.value.slice(0, cursor);
+    const match = before.match(/([A-Za-z]+[0-9]?|<=|>=|!=)$/);
+    if (!match) return false;
+
+    const raw = match[1];
+    const shortcuts = currentShortcutMap();
+    const replacement = shortcuts[raw] || shortcuts[raw.toLowerCase()];
+    if (!replacement) return false;
+
+    input.value = `${before.slice(0, -raw.length)}${replacement}${input.value.slice(cursor)}`;
+    const cursorOffset = replacement.includes("()") ? replacement.indexOf("(") + 1 : replacement.length;
+    const nextCursor = cursor - raw.length + cursorOffset;
+    input.setSelectionRange(nextCursor, nextCursor);
+    saveCurrentAnswer();
+    return true;
   }
 
   function rateCurrent(rating) {
@@ -734,10 +1259,20 @@
     });
     el.answerInput.addEventListener("input", saveCurrentAnswer);
     el.answerInput.addEventListener("keydown", (event) => {
+      if (event.key === "Tab" && expandAnswerShortcut()) {
+        event.preventDefault();
+        return;
+      }
       if (event.key !== "Enter") return;
       event.preventDefault();
       el.answerInput.blur();
       revealOrNext();
+    });
+    el.symbolToolbar.addEventListener("click", (event) => {
+      const button = event.target.closest("button[data-insert]");
+      if (!button) return;
+      event.preventDefault();
+      insertAnswerText(button.dataset.insert || "");
     });
     el.ratingActions.querySelectorAll("button").forEach((button) => {
       button.addEventListener("click", (event) => {

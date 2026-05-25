@@ -323,10 +323,168 @@ input[type="range"] {
 
 .pronunciation {
   margin: 0;
+  width: min(820px, 100%);
+  display: grid;
+  gap: 16px;
   color: #3d3833;
   font-size: clamp(18px, 1.8vw, 28px);
   line-height: 1.5;
   white-space: pre-line;
+}
+
+.content-block {
+  margin: 0;
+}
+
+.text-block,
+.note-block {
+  max-width: 72ch;
+  margin-inline: auto;
+}
+
+.note-block {
+  color: var(--accent-dark);
+}
+
+.math-block {
+  width: fit-content;
+  max-width: 100%;
+  margin-inline: auto;
+  padding: 10px 14px;
+  border: 1px solid var(--hairline);
+  background: rgba(255, 253, 247, 0.76);
+  font-family: "Times New Roman", "Noto Serif SC", serif;
+  font-size: 0.92em;
+  line-height: 1.45;
+  overflow-x: auto;
+}
+
+.media-block,
+.graphic-block,
+.table-block {
+  width: min(760px, 100%);
+  margin-inline: auto;
+}
+
+.media-block img {
+  display: block;
+  max-width: 100%;
+  height: auto;
+  margin-inline: auto;
+  border: 1px solid var(--hairline);
+  background: #fffdf7;
+}
+
+.graphic-block {
+  display: grid;
+  gap: 8px;
+}
+
+.graphic-block svg {
+  display: block;
+  width: 100%;
+  height: auto;
+  border: 1px solid var(--hairline);
+  background: #fffdf7;
+}
+
+.graphic-block figcaption,
+.media-block figcaption {
+  color: var(--muted);
+  font-size: 12px;
+  letter-spacing: 0.06em;
+}
+
+.plot-grid {
+  stroke: rgba(42, 38, 32, 0.12);
+  stroke-width: 1;
+}
+
+.plot-axis {
+  stroke: rgba(42, 38, 32, 0.58);
+  stroke-width: 1.5;
+}
+
+.plot-line {
+  fill: none;
+  stroke-width: 2.5;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.plot-point circle,
+.schematic-node {
+  fill: var(--accent);
+}
+
+.plot-point text,
+.plot-label,
+.plot-tick,
+.schematic-label,
+.process-label {
+  font-family: Inter, "Noto Sans SC", "Microsoft YaHei", Arial, sans-serif;
+  font-size: 12px;
+  fill: var(--ink);
+}
+
+.plot-tick {
+  fill: var(--muted);
+  text-anchor: middle;
+}
+
+.plot-tick-y {
+  text-anchor: start;
+}
+
+.schematic-line,
+.process-stream {
+  stroke: var(--ink);
+  stroke-width: 2.5;
+  fill: none;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.schematic-symbol,
+.process-unit {
+  stroke: var(--ink);
+  stroke-width: 2;
+  fill: rgba(255, 253, 247, 0.86);
+}
+
+.process-stream {
+  stroke: var(--accent-dark);
+}
+
+.process-label {
+  text-anchor: middle;
+  dominant-baseline: middle;
+}
+
+.graphic-error {
+  width: min(760px, 100%);
+  margin-inline: auto;
+  padding: 12px 14px;
+  border: 1px dashed var(--accent);
+  color: var(--accent-dark);
+  background: rgba(185, 20, 34, 0.06);
+  font-size: 14px;
+}
+
+.table-block {
+  overflow-x: auto;
+}
+
+.table-block table {
+  width: 100%;
+  border-collapse: collapse;
+  background: rgba(255, 253, 247, 0.72);
+}
+
+.table-block td {
+  border: 1px solid var(--hairline);
+  padding: 8px 10px;
+  font-size: 14px;
 }
 
 .divider-mark {
@@ -716,6 +874,34 @@ textarea.prompt-output {
   background: rgba(255, 253, 247, 0.86);
 }
 
+.symbol-toolbar {
+  width: min(760px, 100%);
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 6px;
+  margin-top: -10px;
+}
+
+.symbol-toolbar button {
+  min-width: 36px;
+  min-height: 32px;
+  border: 1px solid var(--hairline);
+  background: rgba(255, 253, 247, 0.72);
+  color: var(--ink);
+  padding: 0 9px;
+  font-family: Inter, "Noto Sans SC", "Microsoft YaHei", Arial, sans-serif;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.symbol-toolbar button:hover,
+.symbol-toolbar button:focus-visible {
+  border-color: var(--accent);
+  color: var(--accent-dark);
+  background: rgba(255, 253, 247, 0.94);
+}
+
 .solution-block {
   display: grid;
   gap: 12px;
@@ -740,6 +926,19 @@ textarea.prompt-output {
 .solution-block p {
   margin: 0;
   color: var(--ink);
+}
+
+.answer-blocks {
+  display: grid;
+  gap: 12px;
+}
+
+.answer-blocks .text-block,
+.answer-blocks .note-block,
+.answer-blocks .media-block,
+.answer-blocks .graphic-block,
+.answer-blocks .table-block {
+  margin-inline: 0;
 }
 
 .rating-actions {
