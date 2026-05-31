@@ -1,11 +1,12 @@
-const CACHE_NAME = "shuatiji-scoped-symbols-20260525";
+const CACHE_NAME = "shuatiji-chemical-basics-20260531";
 const ASSETS = [
   "./",
   "./index.html",
-  "./styles.css?v=20260525-scoped-symbols",
-  "./app.js?v=20260525-scoped-symbols",
+  "./styles.css?v=20260531-chemical-basics",
+  "./app.js?v=20260531-chemical-basics",
   "./data/catalog.js",
   "./data/probability.js",
+  "./data/chemical-engineering-basics.js",
   "./manifest.json",
   "./icons/icon-192.png",
   "./icons/icon-512.png",
