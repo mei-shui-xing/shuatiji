@@ -1,4 +1,4 @@
-const CACHE_NAME = "shuatiji-katex-book-20260531";
+const CACHE_NAME = "shuatiji-ppt-navigation-20260531";
 const ASSETS = [
   "./",
   "./index.html",
@@ -25,7 +25,7 @@ const ASSETS = [
   "./vendor/katex/fonts/KaTeX_Size4-Regular.woff2",
   "./vendor/katex/fonts/KaTeX_Typewriter-Regular.woff2",
   "./styles.css?v=20260531-katex-book",
-  "./app.js?v=20260531-katex-book",
+  "./app.js?v=20260531-ppt-navigation",
   "./data/catalog.js",
   "./data/probability.js",
   "./data/chemical-engineering-basics.js",

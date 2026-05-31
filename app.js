@@ -91,6 +91,10 @@
     return "shuatiji:localBanks";
   }
 
+  function selectedBankKey() {
+    return "shuatiji:selectedBank";
+  }
+
   function localBankStorageKey(bankId) {
     return `shuatiji:local-bank:${bankId}`;
   }
@@ -561,6 +565,7 @@
   function loadBank(bankId) {
     clearTimeout(state.timer);
     state.bankId = bankId;
+    localStorage.setItem(selectedBankKey(), bankId);
     const bank = normalizeBank(getBank(bankId));
     el.bankSelect.value = state.bankId;
     state.bankName = bank.name || "";
@@ -579,6 +584,11 @@
     el.resetBankBtn.textContent = isLocalBankId(state.bankId) ? "删除本地题库" : "恢复内置题库";
     el.bankEditor.value = JSON.stringify(bank, null, 2);
     render();
+  }
+
+  function resetPresentationScroll() {
+    if (!state.presentationMode) return;
+    el.formulaCard.scrollTop = 0;
   }
 
   function currentCard() {
@@ -603,6 +613,7 @@
         state.index = orderIndex;
         state.revealed = state.presentationMode || state.view !== "prompt";
         render();
+        resetPresentationScroll();
       });
       return button;
     });
@@ -1260,6 +1271,7 @@
     state.index = (state.index + 1) % state.order.length;
     state.revealed = state.presentationMode || state.view !== "prompt";
     render();
+    resetPresentationScroll();
     scheduleAuto();
   }
 
@@ -1268,6 +1280,7 @@
     state.index = (state.index - 1 + state.order.length) % state.order.length;
     state.revealed = state.presentationMode || state.view !== "prompt";
     render();
+    resetPresentationScroll();
   }
 
   function saveCurrentAnswer() {
@@ -1472,7 +1485,8 @@
 
   function initBankSelect() {
     const migratedId = migrateLegacyLocalBanks();
-    renderBankSelect(migratedId || state.bankId);
+    const savedId = localStorage.getItem(selectedBankKey()) || "";
+    renderBankSelect(migratedId || savedId || state.bankId);
   }
 
   function renderBankSelect(selectedId = state.bankId) {
