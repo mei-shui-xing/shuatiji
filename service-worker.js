@@ -1,8 +1,8 @@
-const CACHE_NAME = "shuatiji-chemical-basics-20260531";
+const CACHE_NAME = "shuatiji-toolbar-spacing-20260531";
 const ASSETS = [
   "./",
   "./index.html",
-  "./styles.css?v=20260531-chemical-basics",
+  "./styles.css?v=20260531-toolbar-spacing",
   "./app.js?v=20260531-chemical-basics",
   "./data/catalog.js",
   "./data/probability.js",
