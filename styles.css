@@ -359,6 +359,26 @@ input[type="range"] {
   overflow-x: auto;
 }
 
+.math-block--rendered {
+  min-width: min(100%, 280px);
+  color: #171411;
+  text-align: center;
+  white-space: normal;
+}
+
+.math-block--rendered .katex {
+  font-size: 1.12em;
+}
+
+.formula-card.is-presentation .math-block--rendered {
+  padding: 14px 18px;
+  background: rgba(255, 254, 250, 0.92);
+}
+
+.formula-card.is-presentation .math-block--rendered .katex {
+  font-size: 1.32em;
+}
+
 .media-block,
 .graphic-block,
 .table-block {

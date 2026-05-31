@@ -31,6 +31,7 @@ jobs:
           cp index.html app.js styles.css README.md manifest.json service-worker.js _site/
           cp -r data _site/data
           cp -r icons _site/icons
+          cp -r vendor _site/vendor
           touch _site/.nojekyll
 
       - name: Setup Pages

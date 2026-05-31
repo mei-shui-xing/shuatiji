@@ -634,7 +634,7 @@
 
   function renderBlock(block) {
     if (block.type === "math") {
-      return `<div class="content-block math-block">${renderText(block.text || block.content || "")}</div>`;
+      return renderMathBlock(block);
     }
     if (block.type === "image") {
       const src = block.src || block.url || "";
@@ -649,6 +649,233 @@
     if (block.type === "process") return renderProcessBlock(block.spec || block);
     if (block.type === "note") return `<p class="content-block note-block">${renderText(block.text || block.content || "")}</p>`;
     return `<p class="content-block text-block">${renderText(block.text || block.content || "")}</p>`;
+  }
+
+  function renderMathBlock(block) {
+    const fallback = block.text || block.content || block.latex || "";
+    const latex = block.latex || mathTextToLatex(fallback);
+    if (!window.katex || !latex) return `<div class="content-block math-block">${renderText(fallback)}</div>`;
+
+    try {
+      const html = window.katex.renderToString(latex, {
+        displayMode: false,
+        throwOnError: false,
+        strict: false,
+        trust: false,
+      });
+      return `<div class="content-block math-block math-block--rendered" data-math-source="${escapeAttr(fallback)}">${html}</div>`;
+    } catch {
+      return `<div class="content-block math-block">${renderText(fallback)}</div>`;
+    }
+  }
+
+  function mathTextToLatex(value) {
+    const source = String(value || "").trim();
+    if (!source) return "";
+    if (/^integral\(0 to delta\) dx =/.test(source)) {
+      return String.raw`\int_{0}^{\delta} \mathrm{d}x = -\frac{\lambda A}{\dot Q}\int_{T_1}^{T_2}\mathrm{d}T`;
+    }
+
+    const phraseTokens = {
+      "gas residence time": "gas_residence_time",
+      "particle settling time": "particle_settling_time",
+      "centrifugal acceleration": "centrifugal_acceleration",
+      "mass in": "mass_in",
+      "mass out": "mass_out",
+    };
+    let normalized = source;
+    Object.entries(phraseTokens).forEach(([phrase, token]) => {
+      normalized = normalized.replaceAll(phrase, token);
+    });
+    normalized = normalized.replace(/\bpA\b/g, "p*A");
+
+    try {
+      const tokens = tokenizeMath(normalized);
+      let position = 0;
+
+      function peek(value) {
+        return tokens[position]?.value === value;
+      }
+
+      function take(value) {
+        if (!peek(value)) return null;
+        return tokens[position++].value;
+      }
+
+      function parseRelations() {
+        let left = parseSum();
+        while (["=", "<=", ">=", "!=", "<", ">"].includes(tokens[position]?.value)) {
+          const operator = tokens[position++].value;
+          left = `${left} ${mathOperatorLatex(operator)} ${parseSum()}`;
+        }
+        return left;
+      }
+
+      function parseSequence() {
+        let left = parseRelations();
+        while (take(";")) left = `${left}\\qquad ${parseRelations()}`;
+        return left;
+      }
+
+      function parseSum() {
+        let left = parseProduct();
+        while (peek("+") || peek("-")) {
+          const operator = tokens[position++].value;
+          left = `${left} ${operator} ${parseProduct()}`;
+        }
+        return left;
+      }
+
+      function parseProduct() {
+        let left = parsePower();
+        while (peek("*") || peek("/") || startsMathAtom(tokens[position])) {
+          if (take("/")) {
+            left = `\\frac{${left}}{${stripMathGroup(parsePower())}}`;
+            continue;
+          }
+          take("*");
+          left = `${left}\\,${parsePower()}`;
+        }
+        return left;
+      }
+
+      function parsePower() {
+        let left = parseUnary();
+        while (take("^")) left = `${left}^{${parseUnary()}}`;
+        return left;
+      }
+
+      function parseUnary() {
+        if (take("-")) return `-${parseUnary()}`;
+        if (take("+")) return parseUnary();
+        return parseAtom();
+      }
+
+      function parseAtom() {
+        const token = tokens[position++];
+        if (!token) return "";
+        if (token.value === "(") {
+          const contents = parseRelations();
+          if (!take(")")) throw new Error("Missing closing parenthesis");
+          return `\\left(${contents}\\right)`;
+        }
+        if (token.type === "number") return token.value;
+        if (token.type !== "identifier") return mathOperatorLatex(token.value);
+
+        if (take("(")) {
+          const args = [];
+          if (!peek(")")) {
+            do {
+              args.push(parseRelations());
+            } while (take(","));
+          }
+          if (!take(")")) throw new Error("Missing function parenthesis");
+          return renderMathFunction(token.value, args);
+        }
+        return renderMathIdentifier(token.value);
+      }
+
+      const result = parseSequence();
+      if (position !== tokens.length) throw new Error("Unparsed math token");
+      return result;
+    } catch {
+      return escapeLatexText(source);
+    }
+  }
+
+  function tokenizeMath(source) {
+    const tokens = [];
+    const matcher = /\s*(<=|>=|!=|\.\.\.|[A-Za-z_][A-Za-z0-9_]*|\d+(?:\.\d+)?|[=+\-*/^(),;<>])\s*/gy;
+    let position = 0;
+    while (position < source.length) {
+      matcher.lastIndex = position;
+      const match = matcher.exec(source);
+      if (!match) throw new Error("Unsupported math token");
+      const value = match[1];
+      tokens.push({
+        type: /^\d/.test(value) ? "number" : /^[A-Za-z_]/.test(value) ? "identifier" : "operator",
+        value,
+      });
+      position = matcher.lastIndex;
+    }
+    return tokens;
+  }
+
+  function startsMathAtom(token) {
+    return token && (token.type === "identifier" || token.type === "number" || token.value === "(");
+  }
+
+  function stripMathGroup(value) {
+    return value.startsWith("\\left(") && value.endsWith("\\right)") ? value.slice(6, -7) : value;
+  }
+
+  function mathOperatorLatex(value) {
+    return {
+      "<=": "\\leq",
+      ">=": "\\geq",
+      "!=": "\\neq",
+      "...": "\\ldots",
+      ";": "\\qquad",
+    }[value] || value;
+  }
+
+  function renderMathFunction(name, args) {
+    const contents = args.join(", ");
+    if (name === "ln") return `\\ln\\left(${contents}\\right)`;
+    if (name === "sum") return `\\sum\\left(${contents}\\right)`;
+    if (name === "delta") return `\\Delta\\left(${contents}\\right)`;
+    if (name === "sqrt") return `\\sqrt{${contents}}`;
+    return `${renderMathIdentifier(name)}\\left(${contents}\\right)`;
+  }
+
+  function renderMathIdentifier(value) {
+    const special = {
+      Q_dot: "\\dot Q",
+      delta_T: "\\Delta T",
+      delta_p: "\\Delta p",
+      delta_p_mf: "\\Delta p_{\\mathrm{mf}}",
+      omega: "\\omega",
+      rho: "\\rho",
+      lambda: "\\lambda",
+      mu: "\\mu",
+      nu: "\\nu",
+      alpha: "\\alpha",
+      epsilon: "\\varepsilon",
+      eta: "\\eta",
+      sigma: "\\sigma",
+      zeta: "\\zeta",
+      pi: "\\pi",
+      mass_in: "\\text{mass in}",
+      mass_out: "\\text{mass out}",
+      gas_residence_time: "\\text{gas residence time}",
+      particle_settling_time: "\\text{particle settling time}",
+      centrifugal_acceleration: "\\text{centrifugal acceleration}",
+      gravity: "\\text{gravity}",
+      buoyancy: "\\text{buoyancy}",
+      drag: "\\text{drag}",
+      constant: "\\text{constant}",
+    };
+    if (special[value]) return special[value];
+    if (/^d[A-Z_a-z]$/.test(value)) return `\\mathrm{d}${renderMathIdentifier(value.slice(1))}`;
+
+    const numbered = value.match(/^([A-Za-z_]+)(\d+)$/);
+    if (numbered) return `${renderMathIdentifier(numbered[1])}_{${numbered[2]}}`;
+
+    const subscript = value.match(/^([A-Za-z]+)_([A-Za-z0-9_]+)$/);
+    if (subscript) {
+      const suffix = subscript[2].length === 1 ? renderMathIdentifier(subscript[2]) : `\\mathrm{${escapeLatexText(subscript[2])}}`;
+      return `${renderMathIdentifier(subscript[1])}_{${suffix}}`;
+    }
+    return escapeLatexText(value);
+  }
+
+  function escapeLatexText(value) {
+    return String(value)
+      .replaceAll("\\", "\\textbackslash ")
+      .replaceAll("{", "\\{")
+      .replaceAll("}", "\\}")
+      .replaceAll("_", "\\_")
+      .replaceAll("%", "\\%");
   }
 
   function renderTableBlock(block) {
