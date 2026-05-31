@@ -9,6 +9,7 @@
     order: [],
     index: 0,
     revealed: false,
+    presentationMode: false,
     view: "prompt",
     auto: false,
     shuffle: false,
@@ -39,8 +40,11 @@
     cardChapter: document.querySelector("#cardChapter"),
     cardTitle: document.querySelector("#cardTitle"),
     cardPrompt: document.querySelector("#cardPrompt"),
+    formulaCard: document.querySelector("#formulaCard"),
+    answerBox: document.querySelector(".answer-box"),
     answerInput: document.querySelector("#answerInput"),
     symbolToolbar: document.querySelector("#symbolToolbar"),
+    dividerMark: document.querySelector(".divider-mark"),
     cardAnswer: document.querySelector("#cardAnswer"),
     cardHint: document.querySelector("#cardHint"),
     ratingActions: document.querySelector("#ratingActions"),
@@ -57,6 +61,7 @@
     markKnownBtn: document.querySelector("#markKnownBtn"),
     knownCount: document.querySelector("#knownCount"),
     goalCount: document.querySelector("#goalCount"),
+    dailyGoal: document.querySelector(".daily-goal"),
     editorToggle: document.querySelector("#editorToggle"),
     editorPanel: document.querySelector("#editorPanel"),
     closeEditor: document.querySelector("#closeEditor"),
@@ -560,10 +565,11 @@
     el.bankSelect.value = state.bankId;
     state.bankName = bank.name || "";
     state.bankSubject = bank.subject || "";
+    state.presentationMode = Boolean(bank.presentationMode);
     state.cards = bank.cards;
     state.order = state.shuffle ? shuffleArray(state.cards.map((_, index) => index)) : state.cards.map((_, index) => index);
     state.index = 0;
-    state.revealed = state.view !== "prompt";
+    state.revealed = state.presentationMode || state.view !== "prompt";
     loadStats();
     el.goalCount.textContent = bank.dailyGoal || 20;
     el.bankSize.textContent = pad(state.cards.length);
@@ -595,7 +601,7 @@
       `;
       button.addEventListener("click", () => {
         state.index = orderIndex;
-        state.revealed = state.view !== "prompt";
+        state.revealed = state.presentationMode || state.view !== "prompt";
         render();
       });
       return button;
@@ -905,6 +911,7 @@
     const card = currentCard();
     if (!card) return;
 
+    const presentation = state.presentationMode;
     const number = state.index + 1;
     const userAnswer = state.stats.answers[card.id] || "";
     const rating = state.stats.ratings[card.id] || "";
@@ -912,18 +919,23 @@
     el.sessionNumber.textContent = String(number);
     el.cardChapter.textContent = card.chapter;
     el.cardTitle.textContent = card.title;
-    el.cardPrompt.innerHTML = state.view === "answer" ? renderBlocks([{ type: "text", text: "先看答案模式" }]) : renderBlocks(card.promptBlocks);
+    el.cardPrompt.innerHTML =
+      !presentation && state.view === "answer" ? renderBlocks([{ type: "text", text: "先看答案模式" }]) : renderBlocks(card.promptBlocks);
     renderSymbolToolbar();
     el.answerInput.value = userAnswer;
-    el.cardAnswer.innerHTML = renderSolution(card, userAnswer);
-    el.cardHint.textContent = state.revealed || state.view !== "prompt" ? getRatingHint(rating) : "过程写在纸上；这里只填最后答案，然后提交看解析。";
-    el.cardAnswer.classList.toggle("is-hidden", !state.revealed && state.view === "prompt");
-    el.ratingActions.classList.toggle("is-visible", state.revealed || state.view !== "prompt");
+    el.cardAnswer.innerHTML = presentation ? renderPresentationSolution(card) : renderSolution(card, userAnswer);
+    el.cardHint.textContent = presentation ? "" : state.revealed || state.view !== "prompt" ? getRatingHint(rating) : "过程写在纸上；这里只填最后答案，然后提交看解析。";
+    el.formulaCard.classList.toggle("is-presentation", presentation);
+    [el.answerBox, el.symbolToolbar, el.dividerMark, el.cardHint, el.dailyGoal].forEach((item) => {
+      item.classList.toggle("is-presentation-hidden", presentation);
+    });
+    el.cardAnswer.classList.toggle("is-hidden", !presentation && !state.revealed && state.view === "prompt");
+    el.ratingActions.classList.toggle("is-visible", !presentation && (state.revealed || state.view !== "prompt"));
     el.ratingActions.querySelectorAll("button").forEach((button) => {
       button.classList.toggle("is-active", button.dataset.rating === rating);
     });
-    el.revealText.textContent = state.revealed ? "下一题" : "提交并看解析";
-    el.revealBtn.classList.toggle("is-continue", state.revealed);
+    el.revealText.textContent = presentation ? "下一页" : state.revealed ? "下一题" : "提交并看解析";
+    el.revealBtn.classList.toggle("is-continue", presentation || state.revealed);
     el.playState.textContent = state.auto ? "自动中" : "已暂停";
     el.passCount.textContent = state.stats.known.size;
     el.knownCount.textContent = state.stats.known.size;
@@ -931,6 +943,18 @@
     el.markKnownBtn.classList.toggle("is-lit", state.stats.known.has(card.id));
     renderQueue();
     saveStats();
+  }
+
+  function renderPresentationSolution(card) {
+    return `
+      <div class="solution-block presentation-solution">
+        <section>
+          <strong>公式讲解</strong>
+          <div class="answer-blocks">${renderBlocks(card.solutionBlocks)}</div>
+        </section>
+        ${card.keyPoint || card.hint ? `<p class="presentation-keypoint">${escapeHtml(card.keyPoint || card.hint)}</p>` : ""}
+      </div>
+    `;
   }
 
   function renderSolution(card, userAnswer) {
@@ -988,6 +1012,11 @@
   }
 
   function revealOrNext() {
+    if (state.presentationMode) {
+      markSeen(currentCard());
+      nextCard();
+      return;
+    }
     if (!state.revealed && state.view === "prompt") {
       saveCurrentAnswer();
       state.revealed = true;
@@ -1002,7 +1031,7 @@
   function nextCard() {
     saveCurrentAnswer();
     state.index = (state.index + 1) % state.order.length;
-    state.revealed = state.view !== "prompt";
+    state.revealed = state.presentationMode || state.view !== "prompt";
     render();
     scheduleAuto();
   }
@@ -1010,7 +1039,7 @@
   function prevCard() {
     saveCurrentAnswer();
     state.index = (state.index - 1 + state.order.length) % state.order.length;
-    state.revealed = state.view !== "prompt";
+    state.revealed = state.presentationMode || state.view !== "prompt";
     render();
   }
 
@@ -1292,7 +1321,7 @@
         document.querySelectorAll("[data-view]").forEach((item) => item.classList.remove("is-active"));
         button.classList.add("is-active");
         state.view = button.dataset.view;
-        state.revealed = state.view !== "prompt";
+        state.revealed = state.presentationMode || state.view !== "prompt";
         render();
       });
     });

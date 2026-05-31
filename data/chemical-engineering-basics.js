@@ -5,6 +5,7 @@ window.STUDY_BANKS["chemical-engineering-basics"] = {
   name: "化工原理上台保命公式",
   subject: "化工原理：流体、泵、机械分离、传热基础",
   version: "2026-05-31-formula-walkthrough",
+  presentationMode: true,
   dailyGoal: 12,
   cards: [
     {
